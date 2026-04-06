@@ -273,8 +273,10 @@ def cond_fmt_formula_req(sheet_id, r1, c1, r2, c2, formula, bg_color):
 def data_validation_req(sheet_id, r1, c1, r2, c2, values=None,
                         range_source=None, strict=True):
     if range_source:
+        # Sheets API requires ONE_OF_RANGE values to start with "="
+        src = range_source if range_source.startswith("=") else f"={range_source}"
         condition = {"type": "ONE_OF_RANGE",
-                     "values": [{"userEnteredValue": range_source}]}
+                     "values": [{"userEnteredValue": src}]}
     else:
         condition = {"type": "ONE_OF_LIST",
                      "values": [{"userEnteredValue": v} for v in values]}
@@ -1197,34 +1199,101 @@ def batch_update(service, spreadsheet_id, requests):
               f"({len(chunk)} requests)")
 
 
-def build(service):
-    print("Creating spreadsheet …")
-    spreadsheet_id, url = create_spreadsheet(service)
-    print(f"  → Created: {url}")
+def build_patch_requests():
+    """
+    Requests for the patch path: validation, conditional formatting, named
+    ranges.  Does NOT write cell data — safe to run against an already-
+    populated spreadsheet.
+    """
+    reqs = []
+    log_sid   = SID["log"]
+    dash_sid  = SID["dashboard"]
+    setup_sid = SID["setup"]
 
-    all_requests = []
+    # ── Data validation ───────────────────────────────────────────────────────
+    reqs.append(data_validation_req(log_sid, 1, 2, 1000, 3,
+                                    range_source="Reference!$A$2:$A$28"))
+    reqs.append(data_validation_req(log_sid, 1, 4, 1000, 5,
+                                    values=["Income", "Side Income", "Expense"]))
+    reqs.append(data_validation_req(dash_sid, 1, 2, 2, 3,
+                                    range_source="Reference!$D$2:$D$13"))
+    reqs.append({
+        "setDataValidation": {
+            "range": range_a1(setup_sid, 6, 2, 9, 3),
+            "rule": {
+                "condition": {
+                    "type": "NUMBER_BETWEEN",
+                    "values": [{"userEnteredValue": "0"},
+                               {"userEnteredValue": "1"}],
+                },
+                "showCustomUi": True,
+                "strict": False,
+            },
+        }
+    })
 
-    print("Building Reference tab …")
-    all_requests.extend(build_reference_requests())
+    # ── Conditional formatting ────────────────────────────────────────────────
+    for val, bg in [("Needs",          C["mintBg"]),
+                    ("Wants",          C["wantsBg"]),
+                    ("Savings & Debt", C["savingsBg"])]:
+        reqs.append(cond_fmt_req(log_sid, 1, 5, 1000, 6,
+                                 "TEXT_EQ", [{"userEnteredValue": val}], bg))
+    reqs.append(cond_fmt_req(log_sid, 1, 4, 1000, 5,
+                             "TEXT_EQ", [{"userEnteredValue": "Side Income"}],
+                             C["amberInput"]))
+    reqs.append(cond_fmt_formula_req(setup_sid, 10, 2, 11, 3,
+                                     "=C11<>1", C["coralBg"]))
+    for r_col in [1, 5, 9]:
+        reqs.append(cond_fmt_req(dash_sid, 10, r_col, 11, r_col + 1,
+                                 "NUMBER_GREATER_THAN_EQ",
+                                 [{"userEnteredValue": "0"}], C["mintBg"]))
+        reqs.append(cond_fmt_req(dash_sid, 10, r_col, 11, r_col + 1,
+                                 "NUMBER_LESS",
+                                 [{"userEnteredValue": "0"}], C["coralBg"]))
+    reqs.append(cond_fmt_req(dash_sid, 5, 8, 6, 9,
+                             "NUMBER_GREATER_THAN_EQ",
+                             [{"userEnteredValue": "1"}], C["mintBg"]))
+    reqs.append(cond_fmt_req(dash_sid, 5, 8, 6, 9,
+                             "NUMBER_LESS",
+                             [{"userEnteredValue": "0.8"}], C["coralBg"]))
 
-    print("Building Expense Log tab …")
-    all_requests.extend(build_log_requests())
+    # ── Named ranges ─────────────────────────────────────────────────────────
+    reqs.extend(build_named_range_requests())
 
-    print("Building Budget Setup tab …")
-    all_requests.extend(build_setup_requests())
+    return reqs
 
-    print("Building Dashboard tab …")
-    all_requests.extend(build_dashboard_requests())
 
-    print("Adding named ranges …")
-    all_requests.extend(build_named_range_requests())
+def build(service, existing_id=None):
+    if existing_id:
+        spreadsheet_id = existing_id
+        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
+        print(f"Using existing spreadsheet: {url}")
+        print("Skipping steps 1–5 (data already populated) …")
 
-    print(f"Executing {len(all_requests)} API requests …")
-    batch_update(service, spreadsheet_id, all_requests)
+        print("Applying validation, conditional formatting, named ranges …")
+        batch_update(service, spreadsheet_id, build_patch_requests())
+    else:
+        print("Creating spreadsheet …")
+        spreadsheet_id, url = create_spreadsheet(service)
+        print(f"  → Created: {url}")
+
+        all_requests = []
+        print("Building Reference tab …")
+        all_requests.extend(build_reference_requests())
+        print("Building Expense Log tab …")
+        all_requests.extend(build_log_requests())
+        print("Building Budget Setup tab …")
+        all_requests.extend(build_setup_requests())
+        print("Building Dashboard tab …")
+        all_requests.extend(build_dashboard_requests())
+        print("Adding named ranges …")
+        all_requests.extend(build_named_range_requests())
+        print(f"Executing {len(all_requests)} API requests …")
+        batch_update(service, spreadsheet_id, all_requests)
 
     print("Adding charts …")
-    chart_requests = build_chart_requests(spreadsheet_id)
-    batch_update(service, spreadsheet_id, chart_requests)
+    batch_update(service, spreadsheet_id,
+                 build_chart_requests(spreadsheet_id))
 
     print("\n✅ Done!")
     print(f"   Spreadsheet URL: {url}")
@@ -1241,10 +1310,19 @@ def main():
     parser.add_argument("--creds", help="Path to OAuth2 client_secrets JSON file")
     parser.add_argument("--token", default="token.json",
                         help="Path to saved OAuth token (default: token.json)")
+    parser.add_argument(
+        "--spreadsheet-id",
+        metavar="ID",
+        help=(
+            "Patch an existing spreadsheet instead of creating a new one. "
+            "Skips data-population steps and runs only validation, "
+            "conditional formatting, named ranges, and charts."
+        ),
+    )
     args = parser.parse_args()
 
     service = get_service(creds_file=args.creds, token_file=args.token)
-    build(service)
+    build(service, existing_id=args.spreadsheet_id)
 
 
 if __name__ == "__main__":
