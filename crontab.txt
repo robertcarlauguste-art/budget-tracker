@@ -1,8 +1,10 @@
-# Kevin — AI Chief of Staff Cron Schedule
+# Rovana Studio — AI Agent Team Cron Schedule
 # To install: run `crontab -e` and paste the lines below
 # Make sure to adjust the Python path if needed (run `which python3` to check)
 
-# 9:00 AM daily — morning briefing draft sent to Gmail Drafts
+# ── KEVIN (Chief of Staff) ──────────────────────────────────────────────────
+
+# 9:00 AM daily — morning briefing draft → Gmail Drafts
 0 9 * * * cd /home/user/budget-tracker && python3 chief_of_staff/main.py briefing >> /tmp/kevin-briefing.log 2>&1
 
 # 2:00 PM daily — afternoon email check, draft replies
@@ -10,3 +12,8 @@
 
 # Every 30 minutes — scan for urgent emails
 */30 * * * * cd /home/user/budget-tracker && python3 chief_of_staff/main.py urgent-check >> /tmp/kevin-urgent.log 2>&1
+
+# ── SAM (Creative Director) ─────────────────────────────────────────────────
+
+# 9:30 AM daily — creative briefs from Kevin's research → Gmail Drafts
+30 9 * * * cd /home/user/budget-tracker && python3 chief_of_staff/main.py creative-brief >> /tmp/sam-briefs.log 2>&1

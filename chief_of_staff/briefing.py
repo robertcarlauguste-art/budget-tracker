@@ -1,4 +1,6 @@
+import json
 from datetime import datetime
+from pathlib import Path
 
 import anthropic
 
@@ -13,6 +15,8 @@ from calendar_client import get_todays_events, format_events_section
 from research import get_design_ideas, get_trending_memes
 from email_monitor import process_email_check, save_reply_drafts, format_email_section
 from gmail_client import create_draft
+
+WORKSPACE_DIR = Path(__file__).parent.parent / "workspace"
 
 
 BRIEFING_TEMPLATE = """\
@@ -86,6 +90,16 @@ def generate_briefing(gmail_service, calendar_service) -> str:
         business=BUSINESS_NAME,
         email=BUSINESS_EMAIL,
     )
+
+    # Save research to workspace so Sam can pick it up
+    WORKSPACE_DIR.mkdir(exist_ok=True)
+    research_file = WORKSPACE_DIR / f"research_{today.strftime('%Y%m%d')}.json"
+    research_file.write_text(json.dumps({
+        "date": today.isoformat(),
+        "design_ideas": design_ideas,
+        "memes": memes,
+    }, indent=2))
+    print(f"  [Kevin] Research saved to workspace for Sam.")
 
     subject = f"Kevin's Brief — {today.strftime('%A %B %-d')}"
     draft = create_draft(gmail_service, to=BUSINESS_EMAIL, subject=subject, body=body)

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Kevin — AI Chief of Staff for Rovana Studio.
+"""Rovana Studio — AI Agent Team.
 
 Usage:
-  python main.py briefing       # Generate and draft the morning briefing (run at 9 AM)
-  python main.py email-check    # Check inbox and draft replies (run at 2 PM)
-  python main.py urgent-check   # Scan for urgent emails (run every 30 min)
+  python main.py briefing        # Kevin: morning briefing draft → Gmail Drafts (9 AM)
+  python main.py email-check     # Kevin: afternoon email check + reply drafts (2 PM)
+  python main.py urgent-check    # Kevin: scan for urgent emails (every 30 min)
+  python main.py creative-brief  # Sam: creative director briefs from today's research (9:30 AM)
 """
 
 import sys
@@ -23,6 +24,7 @@ from gmail_client import get_gmail_service
 from calendar_client import get_calendar_service
 from email_monitor import process_urgent_check, process_email_check, save_reply_drafts, format_email_section
 from briefing import generate_briefing
+from sam import generate_creative_briefs
 from config import CREDENTIALS_FILE, TOKEN_FILE
 
 
@@ -73,10 +75,24 @@ def cmd_urgent_check():
     # Silent if nothing urgent (runs every 30 min, no noise needed)
 
 
+def cmd_creative_brief():
+    print("[Sam] Generating creative briefs from today's research...")
+    check_prerequisites()
+    gmail = get_gmail_service()
+    briefs = generate_creative_briefs(gmail_service=gmail)
+    if briefs:
+        print(f"[Sam] Done. {len(briefs)} brief(s) drafted — check Gmail Drafts.")
+        for b in briefs:
+            print(f"  • {b['concept_name']}: {b['one_liner']}")
+    else:
+        print("[Sam] No briefs generated. Check that Kevin's briefing ran first.")
+
+
 COMMANDS = {
     "briefing": cmd_briefing,
     "email-check": cmd_email_check,
     "urgent-check": cmd_urgent_check,
+    "creative-brief": cmd_creative_brief,
 }
 
 
