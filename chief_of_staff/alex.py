@@ -7,6 +7,7 @@ parameters per product type. Output goes to the workspace for Agent 4
 """
 
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -124,12 +125,22 @@ Engineer production-ready image generation specs for each brief.
 {SPEC_SCHEMA}"""
 
     print("  [Alex] Engineering image generation specs...")
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=3000,
-        system=ALEX_SYSTEM,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
+    for attempt in range(3):
+        try:
+            response = client.messages.create(
+                model=CLAUDE_MODEL,
+                max_tokens=3000,
+                system=ALEX_SYSTEM,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            break
+        except anthropic.RateLimitError:
+            if attempt < 2:
+                wait = 60 * (attempt + 1)
+                print(f"  [Alex] Rate limit hit — waiting {wait}s before retry...")
+                time.sleep(wait)
+            else:
+                raise
 
     raw = response.content[0].text.strip()
     if raw.startswith("```"):

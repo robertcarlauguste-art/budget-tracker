@@ -6,6 +6,7 @@ for each selected concept — ready for image generation.
 """
 
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -133,12 +134,22 @@ Consider: sellability, timing, production feasibility for a solo operator.
 {BRIEF_SCHEMA}"""
 
     print("  [Sam] Analyzing research and writing creative briefs...")
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=2000,
-        system=SAM_SYSTEM,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
+    for attempt in range(3):
+        try:
+            response = client.messages.create(
+                model=CLAUDE_MODEL,
+                max_tokens=2000,
+                system=SAM_SYSTEM,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            break
+        except anthropic.RateLimitError:
+            if attempt < 2:
+                wait = 60 * (attempt + 1)
+                print(f"  [Sam] Rate limit hit — waiting {wait}s before retry...")
+                time.sleep(wait)
+            else:
+                raise
 
     raw = response.content[0].text.strip()
     # Strip markdown code fences if present
