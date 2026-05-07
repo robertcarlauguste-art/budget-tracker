@@ -1,22 +1,31 @@
 import json
+import time
 import anthropic
 
 from config import CLAUDE_MODEL, BUSINESS_NAME
 
 
 def _run_research_prompt(client: anthropic.Anthropic, prompt: str) -> str:
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=1500,
-        tools=[{"type": "web_search_20250305", "name": "web_search"}],
-        messages=[{"role": "user", "content": prompt}],
-    )
-    # Collect all text blocks from the response
-    text_parts = []
-    for block in response.content:
-        if hasattr(block, "text"):
-            text_parts.append(block.text)
-    return "\n".join(text_parts).strip()
+    for attempt in range(3):
+        try:
+            response = client.messages.create(
+                model=CLAUDE_MODEL,
+                max_tokens=1500,
+                tools=[{"type": "web_search_20250305", "name": "web_search"}],
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text_parts = []
+            for block in response.content:
+                if hasattr(block, "text"):
+                    text_parts.append(block.text)
+            return "\n".join(text_parts).strip()
+        except anthropic.RateLimitError:
+            if attempt < 2:
+                wait = 60 * (attempt + 1)
+                print(f"  [Kevin] Rate limit hit — waiting {wait}s before retry...")
+                time.sleep(wait)
+            else:
+                raise
 
 
 def get_design_ideas(client: anthropic.Anthropic) -> str:
