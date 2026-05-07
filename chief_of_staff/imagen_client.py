@@ -1,11 +1,13 @@
-"""Agent 4 — Image Generation via Google Imagen 3.
+"""Agent 4 — Image Generation via Gemini Flash.
 
 Reads Alex's design specs from the workspace, generates images using
-Google's Imagen 3 API, and saves them locally with a summary draft in Gmail.
+Google's Gemini 2.0 Flash image generation (free tier), and saves them
+locally with a summary draft in Gmail.
 """
 
 import json
 import os
+import base64
 from datetime import datetime
 from pathlib import Path
 
@@ -16,7 +18,7 @@ from config import BUSINESS_EMAIL, DELIVERY_EMAIL, BUSINESS_NAME, OWNER_NAME
 from gmail_client import create_draft
 
 WORKSPACE_DIR = Path(__file__).parent.parent / "workspace"
-IMAGEN_MODEL = "imagen-3.0-generate-001"
+GEMINI_IMAGE_MODEL = "gemini-2.0-flash-preview-image-generation"
 
 
 def get_imagen_client() -> genai.Client:
@@ -65,22 +67,24 @@ def generate_images(gmail_service=None) -> list[Path]:
             aspect_ratio = variant.get("aspect_ratio", "1:1")
 
             try:
-                response = client.models.generate_images(
-                    model=IMAGEN_MODEL,
-                    prompt=prompt,
-                    config=types.GenerateImagesConfig(
-                        number_of_images=1,
-                        aspect_ratio=aspect_ratio,
-                        safety_filter_level="block_only_high",
-                        person_generation="dont_allow",
+                response = client.models.generate_content(
+                    model=GEMINI_IMAGE_MODEL,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_modalities=["IMAGE", "TEXT"],
                     ),
                 )
 
-                if not response.generated_images:
+                img_bytes = None
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+                        img_bytes = part.inline_data.data
+                        break
+
+                if not img_bytes:
                     print(f"    Warning: no image returned for {concept} {vid}")
                     continue
 
-                img_bytes = response.generated_images[0].image.image_bytes
                 filename = f"{concept.lower().replace(' ', '_')}_{vid}.png"
                 out_path = output_dir / filename
                 out_path.write_bytes(img_bytes)
