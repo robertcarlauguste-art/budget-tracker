@@ -2,10 +2,12 @@
 """Rovana Studio — AI Agent Team.
 
 Usage:
-  python main.py briefing        # Kevin: morning briefing draft → Gmail Drafts (9 AM)
-  python main.py email-check     # Kevin: afternoon email check + reply drafts (2 PM)
-  python main.py urgent-check    # Kevin: scan for urgent emails (every 30 min)
-  python main.py creative-brief  # Sam: creative director briefs from today's research (9:30 AM)
+  python main.py briefing          # Kevin: morning briefing draft → Gmail Drafts (9 AM)
+  python main.py email-check       # Kevin: afternoon email check + reply drafts (2 PM)
+  python main.py urgent-check      # Kevin: scan for urgent emails (every 30 min)
+  python main.py creative-brief    # Sam: creative director briefs from today's research (9:30 AM)
+  python main.py design-spec       # Alex: image generation specs from Sam's briefs (manual)
+  python main.py generate-images   # Imagen: generate images from Alex's specs (manual)
 """
 
 import sys
@@ -25,6 +27,8 @@ from calendar_client import get_calendar_service
 from email_monitor import process_urgent_check, process_email_check, save_reply_drafts, format_email_section
 from briefing import generate_briefing
 from sam import generate_creative_briefs
+from alex import generate_design_specs
+from imagen_client import generate_images
 from config import CREDENTIALS_FILE, TOKEN_FILE
 
 
@@ -88,11 +92,41 @@ def cmd_creative_brief():
         print("[Sam] No briefs generated. Check that Kevin's briefing ran first.")
 
 
+def cmd_design_spec():
+    print("[Alex] Engineering image generation specs from Sam's briefs...")
+    check_prerequisites()
+    gmail = get_gmail_service()
+    specs = generate_design_specs(gmail_service=gmail)
+    if specs:
+        print(f"[Alex] Done. {len(specs)} spec(s) drafted — check Gmail Drafts.")
+        for s in specs:
+            variants = len(s.get("variants", []))
+            print(f"  • {s['concept_name']} — {variants} variant(s) ready")
+    else:
+        print("[Alex] No specs generated. Run `python main.py creative-brief` first.")
+
+
+def cmd_generate_images():
+    if not os.getenv("GOOGLE_AI_API_KEY"):
+        print("ERROR: GOOGLE_AI_API_KEY not set in .env")
+        print("  Get your key at: https://aistudio.google.com/app/apikey")
+        sys.exit(1)
+    print("[Imagen] Generating images from Alex's specs...")
+    gmail = get_gmail_service()
+    paths = generate_images(gmail_service=gmail)
+    if paths:
+        print(f"[Imagen] Done. {len(paths)} image(s) saved to workspace/generated/")
+    else:
+        print("[Imagen] No images generated. Run `python main.py design-spec` first.")
+
+
 COMMANDS = {
     "briefing": cmd_briefing,
     "email-check": cmd_email_check,
     "urgent-check": cmd_urgent_check,
     "creative-brief": cmd_creative_brief,
+    "design-spec": cmd_design_spec,
+    "generate-images": cmd_generate_images,
 }
 
 

@@ -13,14 +13,17 @@ Two AI agents run on a cron schedule, taking you from morning research to produc
 ## Daily Pipeline
 
 ```
-9:00 AM  Kevin → Morning briefing (research + calendar + email triage) → Gmail Draft
-9:30 AM  Sam   → Picks best 2 ideas → writes detailed creative briefs  → Gmail Draft
+9:00 AM  Kevin  → Morning briefing (research + calendar + email triage) → Gmail Draft
+9:30 AM  Sam    → Picks best 2 ideas → writes detailed creative briefs  → Gmail Draft
          ↓
-         Robert reviews and approves a brief
+         Robert reviews Sam's briefs ← HUMAN CHECKPOINT
          ↓
-[coming] Design Spec Agent → Image generation prompts
-[coming] Image Generation Agent → raw designs
-[coming] Production Prep Agent → POD-ready files
+manual   Alex   → Engineers 3 Imagen prompts per concept → Gmail Draft
+manual   Imagen → Generates images via Google Imagen 3 → workspace/generated/
+         ↓
+         Robert reviews images ← HUMAN CHECKPOINT
+         ↓
+[coming] Production Prep Agent → POD-ready files (resize, DPI, bleed)
 [coming] Listing Agent → Etsy listing copy + SEO tags
 ```
 
@@ -35,8 +38,18 @@ Two AI agents run on a cron schedule, taking you from morning research to produc
 From Kevin's 5 ideas + memes, Sam picks the **2 strongest** and writes a detailed creative brief for each:
 - Target audience, product types, style direction (colors, mood, typography)
 - Design direction for the designer
-- Ready-to-use image generation prompt (DALL-E / Midjourney)
+- Ready-to-use image generation prompt
 - Why this will sell, why the timing is right
+
+## What Alex Delivers (manual — after reviewing Sam's briefs)
+Alex takes Sam's brief and engineers **3 production-ready Imagen 3 prompts** per concept:
+- Safe/clean variant, bold/experimental variant, minimal variant
+- Correct aspect ratios per product type (1:1 for POD, 3:4 for art prints)
+- Negative prompts to steer clear of common AI image failures
+
+## What Imagen Delivers (manual — after reviewing Alex's specs)
+Calls Google Imagen 3 API and saves generated images to `workspace/generated/YYYYMMDD/`.
+A summary draft lands in Gmail Drafts with file paths for review.
 
 ---
 
@@ -48,14 +61,14 @@ From Kevin's 5 ideas + memes, Sam picks the **2 strongest** and writes a detaile
 pip install -r requirements.txt
 ```
 
-### 2. Set your Anthropic API key
+### 2. Set your API keys
 
 ```bash
 cp .env.example .env
-# Edit .env and add your key: ANTHROPIC_API_KEY=sk-ant-...
+# Edit .env and add:
+#   ANTHROPIC_API_KEY=sk-ant-...       (from console.anthropic.com)
+#   GOOGLE_AI_API_KEY=...              (from aistudio.google.com/app/apikey)
 ```
-
-Get your API key at [console.anthropic.com](https://console.anthropic.com/).
 
 ### 3. Set up Google API access
 
@@ -90,12 +103,18 @@ crontab -e
 cd /home/user/budget-tracker
 
 # Kevin
-python chief_of_staff/main.py briefing        # Generate morning briefing
-python chief_of_staff/main.py email-check     # Afternoon email check
-python chief_of_staff/main.py urgent-check    # Urgent email scan
+python chief_of_staff/main.py briefing          # Generate morning briefing
+python chief_of_staff/main.py email-check       # Afternoon email check
+python chief_of_staff/main.py urgent-check      # Urgent email scan
 
 # Sam
-python chief_of_staff/main.py creative-brief  # Generate creative briefs from today's research
+python chief_of_staff/main.py creative-brief    # Creative briefs from today's research
+
+# Alex (run after reviewing Sam's brief)
+python chief_of_staff/main.py design-spec       # Image generation specs
+
+# Imagen (run after reviewing Alex's specs)
+python chief_of_staff/main.py generate-images   # Generate images via Google Imagen 3
 ```
 
 ---
@@ -112,9 +131,15 @@ chief_of_staff/
 ├── email_monitor.py     # Kevin: email classification and reply drafting
 ├── briefing.py          # Kevin: morning briefing assembler
 ├── sam.py               # Sam: creative director briefs
+├── alex.py              # Alex: image generation specs
+├── imagen_client.py     # Agent 4: Google Imagen 3 image generation
 ├── setup_oauth.py       # One-time OAuth setup
 └── credentials/         # Your credentials (gitignored — never committed)
-workspace/               # Shared state between agents (research JSON, briefs JSON)
+workspace/               # Shared state between agents
+  ├── research_YYYYMMDD.json      # Kevin's research output
+  ├── creative_brief_YYYYMMDD.json # Sam's briefs
+  ├── design_specs_YYYYMMDD.json  # Alex's specs
+  └── generated/YYYYMMDD/         # Generated images
 requirements.txt
 crontab.txt
 .env.example
