@@ -1,0 +1,18 @@
+# Environment
+.env
+
+# Google OAuth tokens — never commit these
+chief_of_staff/credentials/token.json
+chief_of_staff/credentials/credentials.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Logs
+*.log
+/tmp/kevin-*.log
