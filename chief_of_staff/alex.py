@@ -12,7 +12,7 @@ from pathlib import Path
 
 import anthropic
 
-from config import CLAUDE_MODEL, BUSINESS_NAME, BUSINESS_EMAIL, OWNER_NAME
+from config import CLAUDE_MODEL, BUSINESS_NAME, BUSINESS_EMAIL, DELIVERY_EMAIL, OWNER_NAME
 from gmail_client import create_draft
 
 WORKSPACE_DIR = Path(__file__).parent.parent / "workspace"
@@ -166,7 +166,7 @@ then run: python chief_of_staff/main.py generate-images
 {BUSINESS_NAME}
 """
     subject = f"Alex's Design Specs — {today_label()}"
-    draft = create_draft(gmail_service, to=BUSINESS_EMAIL, subject=subject, body=body)
+    draft = create_draft(gmail_service, to=DELIVERY_EMAIL, subject=subject, body=body)
     print(f"  [Alex] Spec draft created: {draft.get('id', 'unknown')}")
 
 

@@ -18,6 +18,9 @@ BUSINESS_NAME = "Rovana Studio"
 BUSINESS_EMAIL = "rovanastudio@gmail.com"
 PERSONAL_EMAIL = "Robert.carl.auguste@gmail.com"
 
+# Where Kevin/Sam/Alex deliver drafts — set to whichever Gmail was authorized via OAuth
+DELIVERY_EMAIL = PERSONAL_EMAIL
+
 # Email urgency keywords (case-insensitive)
 URGENT_KEYWORDS = [
     "refund", "urgent", "problem", "issue", "complaint", "dmca",

@@ -12,7 +12,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
-from config import BUSINESS_EMAIL, BUSINESS_NAME, OWNER_NAME
+from config import BUSINESS_EMAIL, DELIVERY_EMAIL, BUSINESS_NAME, OWNER_NAME
 from gmail_client import create_draft
 
 WORKSPACE_DIR = Path(__file__).parent.parent / "workspace"
@@ -125,5 +125,5 @@ Review the images in that folder. When you're ready:
 {BUSINESS_NAME}
 """
     subject = f"Images Ready — {today.strftime('%A %B %-d')}"
-    draft = create_draft(gmail_service, to=BUSINESS_EMAIL, subject=subject, body=body)
+    draft = create_draft(gmail_service, to=DELIVERY_EMAIL, subject=subject, body=body)
     print(f"  [Imagen] Summary draft created: {draft.get('id', 'unknown')}")

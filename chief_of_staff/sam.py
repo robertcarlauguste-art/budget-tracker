@@ -11,7 +11,7 @@ from pathlib import Path
 
 import anthropic
 
-from config import CLAUDE_MODEL, BUSINESS_NAME, BUSINESS_EMAIL, OWNER_NAME
+from config import CLAUDE_MODEL, BUSINESS_NAME, BUSINESS_EMAIL, DELIVERY_EMAIL, OWNER_NAME
 from gmail_client import create_draft
 
 WORKSPACE_DIR = Path(__file__).parent.parent / "workspace"
@@ -176,7 +176,7 @@ Review, pick your favorite, and hand it off to the design pipeline.
     draft = gmail_service.users().drafts().create(
         userId="me",
         body={"message": {
-            "raw": _encode_email(BUSINESS_EMAIL, subject, body)
+            "raw": _encode_email(DELIVERY_EMAIL, subject, body)
         }}
     ).execute()
     print(f"  [Sam] Brief draft created: {draft.get('id', 'unknown')}")

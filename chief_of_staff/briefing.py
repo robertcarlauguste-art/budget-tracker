@@ -7,6 +7,7 @@ import anthropic
 from config import (
     CLAUDE_MODEL,
     BUSINESS_EMAIL,
+    DELIVERY_EMAIL,
     OWNER_NAME,
     BUSINESS_NAME,
     TOP_3_PRIORITIES,
@@ -102,6 +103,6 @@ def generate_briefing(gmail_service, calendar_service) -> str:
     print(f"  [Kevin] Research saved to workspace for Sam.")
 
     subject = f"Kevin's Brief — {today.strftime('%A %B %-d')}"
-    draft = create_draft(gmail_service, to=BUSINESS_EMAIL, subject=subject, body=body)
+    draft = create_draft(gmail_service, to=DELIVERY_EMAIL, subject=subject, body=body)
     print(f"  [Kevin] Briefing draft created: {draft.get('id', 'unknown')}")
     return body
